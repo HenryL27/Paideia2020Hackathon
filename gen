@@ -20,5 +20,5 @@ def gen(lis):
             return x
     return False
 
-def generate:
+def generate():
     return gen([0]*81))
