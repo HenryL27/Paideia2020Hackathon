@@ -23,8 +23,8 @@ fn remove_square(board: Sudoku, ans: Sudoku) -> Sudoku {
     let rem = rng.gen_range(0, 81);
     board[rem] = None;
     board[81-rem] = None;
-    if matching(board, ans){
-        return ans;
+    if matching(solve_sodoku(board), ans){
+        return board;
     } else {
         return None;
     }
