@@ -1,0 +1,119 @@
+So basically, the problem here is that that our solver uses brute force, and when we create the puzzles, we use that solver to see whether the puzzles are possible.
+This means that we create puzzles tht are solvable by brute force, but not by traditional logic, and that's not much fun at all. SO... we need to implement a 
+logical solver for sudoku puzzles. Here is pseudocode that I came up with to deal with that. First of all, this is only going to be possible if we sacrifice the 
+simplicity of the puzzle model we've been using. We can no longer use a simple 81-long int array. (We could, but the logic to solve that would be so complex I don't 
+even want to think about it.) So this is the data model I propose:
+
+Puzzle {
+    S_Set[27] sets;
+}
+S_Set {
+    Sqr[9] squares;
+    u16 values;
+}
+Sqr {
+    C_Set candidates;
+    u8 value;
+    S_Set[3] parents;
+}
+C_Set {
+    u16 value;
+}
+
+So a puzzle is made of 27 sets of 9 squares each, with overlapping. 
+The values field of the S_Set is a binary representation of the set of numbers in the set - think power set stuff.
+The C_Set is much the same, but it has some extra functions.
+A Sqr knows what it's candidates are, what it's value is (if that has been figured out yet) and also to what sets it belongs.
+So what functions do we need?
+
+Puzzle {
+    Puzzle(u8[81] p);			# constructor from our previous format
+    string(?) 	get_state();		# returns the state of the puzzle for easy comparison - we can see if we've made progress
+    bool	is_complete();		# returns whether the puzzle is complete
+    u8[81]	solve();		# solves the puzzle if possible
+}
+S_Set {
+    void update();			# makes sure the values field accurately reflects the squares
+    void elim_values();			# eliminates candidates from squares
+    void fill_missing();		# if a number can only go in one place in this set, plug it in
+    void pairs(); 			# if two numbers overlap exactly in two squares, remove the rest of the candidates for this square
+}
+Sqr {
+    void set_candidates(C_Set); 	# setter
+    void remove_candidate(u8 c);	# removes c from the possible candidates. If only one candidate left, set value
+    bool is_candidate(u8 c);		# is c a candidate for this square?
+    void set_value(u8 n);		# setter
+}
+C_Set {
+    bool is_complete();			# is there only one candidate left?
+    u8[] get_candidate_list();		# not sure this is strictly necessary
+    void remove_candidate(u8 c);	# removes c
+    C_Set intersect(C_Set other);	# also not sure this one is necessary, but would return the intersection of 2 C_Sets
+}
+
+So then all that remains is to better specify the algorithms for these things:
+
+Puzzle::solve(){
+    state = get_state();
+    do {
+	do {
+	    do {
+		state = get_state();
+		for each set {
+		    elim_values();
+		}
+		if (is_complete()) { return answer }
+		s = get_state();
+	    while (s != state);
+
+	    state = get_state();
+	    for each set {
+		fill_missing();
+	    }
+	    if (is_complete()) { return answer }
+	    s = get_state();
+	while (s != state);
+
+	state = get_state();
+	for each set {
+	    pairs();
+	}
+	if (is_complete()) { return answer } 			# though it should never complete exactly here
+	s = get_state();
+    while (s != state);
+    return None;
+}
+# Basically it tries anything it can to complete it and once it runs out of tricks it fails
+
+S_Set::elim_values(){
+    for i from 1 to 9 {
+	if ((values >> (i-1)) % 2 ) == 1 {
+	    for each square s {
+		s.remove_candidate(i);
+	    }
+	}
+    } 
+}
+# should do what the description way above says
+
+S_Set::fill_missing() {
+    for i from 1 to 9 {
+	sqp = None
+	for each square s {
+	    if s.is_candidate(i) {
+		if sqp is None { sqp = s }
+		else { sqp = None; break; }
+	    }
+	}
+	if sqp is not None { sqp.set_value(i); }
+    }
+}
+# for every number, if only 1 option in the set, fill it in
+
+S_Set::pair() {
+    ...
+}
+# this will look almost exactly like fill_missing, except that instead of setting the value of the square directly, it will
+# set the candidates to exactly i and j. It also has slightly more complex logic to decide whether it should fire.
+
+
